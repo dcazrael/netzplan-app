@@ -70,11 +70,11 @@ export default function Netzplan() {
       } else {
         task.FAZ = Math.max(
           ...task.dependencies.map(
-            (depId) => updatedTasks.find((t) => t.id === depId)?.FEZ || 0
+            (depId) => updatedTasks.find((t) => t.id === depId)?.FEZ ?? 0
           )
         );
       }
-      task.FEZ = task.FAZ + task.duration;
+      task.FEZ = (task.FAZ ?? 0) + task.duration;
     });
 
     // Rückwärtsrechnung (SEZ & SAZ)
@@ -84,28 +84,28 @@ export default function Netzplan() {
         task.SEZ = Math.min(
           ...updatedTasks
             .filter((t) => t.dependencies.includes(task.id))
-            .map((t) => t.SAZ || 0)
+            .map((t) => t.SAZ ?? Number.POSITIVE_INFINITY) // Falls SAZ nicht gesetzt ist
         );
       } else {
         task.SEZ = task.FEZ;
       }
-      task.SAZ = task.SEZ - task.duration;
+      task.SAZ = (task.SEZ ?? 0) - task.duration;
     }
 
     // Pufferzeiten berechnen (GP & FP)
     updatedTasks.forEach((task) => {
-      task.GP = (task.SEZ || 0) - (task.FEZ || 0);
+      task.GP = (task.SEZ ?? 0) - (task.FEZ ?? 0);
       task.FP = Math.min(
         ...updatedTasks
           .filter((t) => t.dependencies.includes(task.id))
-          .map((t) => (t.FAZ || 0) - (task.FEZ || 0)),
-        task.GP
+          .map((t) => (t.FAZ ?? 0) - (task.FEZ ?? 0)),
+        task.GP ?? 0
       );
     });
 
     // Kritischen Pfad markieren
     updatedTasks.forEach((task) => {
-      task.isCritical = task.GP === 0;
+      task.isCritical = (task.GP ?? 0) === 0;
     });
 
     return updatedTasks;

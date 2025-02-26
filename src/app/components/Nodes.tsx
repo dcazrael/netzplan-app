@@ -30,13 +30,15 @@ export default function Nodes({ tasks }: NodesProps) {
 
   const updatePositions = () => {
     if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
     const newPositions: {
       [key: number]: { x: number; y: number; width: number; height: number };
     } = {};
     tasks.forEach((task) => {
       const element = document.getElementById(`task-${task.id}`);
       if (element) {
-        const containerRect = containerRef.current.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
         const rect = element.getBoundingClientRect();
         newPositions[task.id] = {
           x: rect.left - containerRect.left + rect.width / 2,
