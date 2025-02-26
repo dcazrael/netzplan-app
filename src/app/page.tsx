@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Nodes from './components/Nodes';
 import TaskInput from './components/TaskInput';
 
@@ -59,9 +59,11 @@ export default function Netzplan() {
     },
   ]);
 
+  // Berechnungsfunktion für den Netzplan
   const calculateSchedule = useCallback((taskList: Task[]) => {
     const updatedTasks = [...taskList];
 
+    // Vorwärtsrechnung (FAZ & FEZ)
     updatedTasks.forEach((task) => {
       if (task.dependencies.length === 0) {
         task.FAZ = 0;
@@ -75,6 +77,7 @@ export default function Netzplan() {
       task.FEZ = task.FAZ + task.duration;
     });
 
+    // Rückwärtsrechnung (SEZ & SAZ)
     for (let i = updatedTasks.length - 1; i >= 0; i--) {
       const task = updatedTasks[i];
       if (updatedTasks.some((t) => t.dependencies.includes(task.id))) {
@@ -89,6 +92,7 @@ export default function Netzplan() {
       task.SAZ = task.SEZ - task.duration;
     }
 
+    // Pufferzeiten berechnen (GP & FP)
     updatedTasks.forEach((task) => {
       task.GP = (task.SEZ || 0) - (task.FEZ || 0);
       task.FP = Math.min(
@@ -99,6 +103,7 @@ export default function Netzplan() {
       );
     });
 
+    // Kritischen Pfad markieren
     updatedTasks.forEach((task) => {
       task.isCritical = task.GP === 0;
     });
@@ -106,16 +111,24 @@ export default function Netzplan() {
     return updatedTasks;
   }, []);
 
-  useEffect(() => {
-    setTasks((prevTasks) => calculateSchedule(prevTasks));
-  }, [calculateSchedule]);
+  // Memoization: Tasks nur neu berechnen, wenn sich die Task-Liste ändert
+  const updatedTasks = useMemo(
+    () => calculateSchedule(tasks),
+    [tasks, calculateSchedule]
+  );
 
+  // State-Update nur, wenn sich wirklich etwas geändert hat
   useEffect(() => {
-    setTasks((prevTasks) => calculateSchedule(prevTasks));
-  }, [tasks.length, calculateSchedule]);
+    setTasks((prevTasks) => {
+      if (JSON.stringify(prevTasks) !== JSON.stringify(updatedTasks)) {
+        return updatedTasks;
+      }
+      return prevTasks;
+    });
+  }, [updatedTasks]);
 
   return (
-    <div className='p-4'>
+    <div className='p-4 flex space-x-2'>
       <TaskInput tasks={tasks} setTasks={setTasks} />
       <Nodes tasks={tasks} />
     </div>

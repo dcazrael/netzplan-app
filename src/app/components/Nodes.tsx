@@ -70,25 +70,44 @@ export default function Nodes({ tasks }: NodesProps) {
     <div ref={containerRef} className='relative'>
       <svg className='absolute top-0 left-0 w-full h-full pointer-events-none z-20'>
         {tasks.map((task) =>
-          task.dependencies.map((depId, index) => {
+          task.dependencies.map((depId, index, depArray) => {
             const fromTask = nodePositions[depId];
             const toTask = nodePositions[task.id];
             if (fromTask && toTask) {
               const isCritical =
                 tasks.find((t) => t.id === depId)?.isCritical &&
                 task.isCritical;
+
+              const isVertical = fromTask.x === toTask.x;
+              const gap = 16;
+              const offset = (index - (depArray.length - 1) / 2) * gap;
+
+              let startX = Math.round(fromTask.x + fromTask.width / 2);
+              let startY = Math.round(fromTask.y + offset);
+              let endX = Math.round(toTask.x - toTask.width / 2 - 12);
+              let endY = Math.round(toTask.y + offset);
+              let midX = (startX + endX) / 2;
+              let marker = isCritical ? 'url(#arrow-r)' : 'url(#arrow-b)';
+
+              if (isVertical) {
+                startX = Math.round(fromTask.x);
+                startY = Math.round(fromTask.y + fromTask.height / 2);
+                endX = Math.round(toTask.x);
+                endY = Math.round(toTask.y - toTask.height / 2 - 10);
+                midX = startX;
+                marker = isCritical
+                  ? 'url(#arrow-r-down)'
+                  : 'url(#arrow-b-down)';
+              }
+
               return (
-                <line
-                  data-from-node={depId}
-                  data-to-node={task.id}
-                  key={`arrow-${depId}-${task.id}`}
-                  x1={Math.round(fromTask.x + fromTask.width / 2)}
-                  y1={Math.round(fromTask.y + index * 15)}
-                  x2={Math.round(toTask.x - toTask.width / 2 - 8)}
-                  y2={Math.round(toTask.y + index * 15)}
+                <path
+                  key={`arrow-${depId}-${task.id}-${index}`}
+                  d={`M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`}
                   className={isCritical ? 'stroke-red-500' : 'stroke-gray-200'}
                   strokeWidth={isCritical ? 3 : 2}
-                  markerEnd={isCritical ? 'url(#arrow-r)' : 'url(#arrow-b)'}
+                  fill='none'
+                  markerEnd={marker}
                 />
               );
             }
@@ -150,6 +169,28 @@ export default function Nodes({ tasks }: NodesProps) {
             markerWidth='6'
             markerHeight='6'
             orient='auto-start-reverse'
+          >
+            <path d='M 0 0 L 10 5 L 0 10 z' className='fill-red-500' />
+          </marker>
+          <marker
+            id='arrow-b-down'
+            viewBox='0 0 10 10'
+            refX='5'
+            refY='5'
+            markerWidth='6'
+            markerHeight='6'
+            orient='90'
+          >
+            <path d='M 0 0 L 10 5 L 0 10 z' className='fill-gray-200' />
+          </marker>
+          <marker
+            id='arrow-r-down'
+            viewBox='0 0 10 10'
+            refX='5'
+            refY='5'
+            markerWidth='6'
+            markerHeight='6'
+            orient='90'
           >
             <path d='M 0 0 L 10 5 L 0 10 z' className='fill-red-500' />
           </marker>
