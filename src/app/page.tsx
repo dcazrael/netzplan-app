@@ -108,11 +108,11 @@ export default function Netzplan() {
 
   useEffect(() => {
     setTasks((prevTasks) => calculateSchedule(prevTasks));
-  }, []);
+  }, [calculateSchedule]);
 
   useEffect(() => {
     setTasks((prevTasks) => calculateSchedule(prevTasks));
-  }, [tasks.length]);
+  }, [tasks.length, calculateSchedule]);
 
   return (
     <div className='p-4'>

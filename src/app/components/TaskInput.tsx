@@ -51,8 +51,14 @@ export default function TaskInput({ tasks, setTasks }: TaskInputProps) {
   };
 
   return (
-    <div className='mb-4 p-4 border rounded bg-gray-100'>
-      <h2 className='font-bold mb-2'>Task-Eingabe</h2>
+    <div className='mb-4 p-4 border rounded bg-gray-800'>
+      <h2 className='font-bold mb-2 text-lg text-center'>Task-Eingabe</h2>
+      <div className='flex space-x-4 mb-2 items-center'>
+        <span className='w-1/12 text-center font-bold'>Index</span>
+        <span className='w-1/4 text-center font-bold'>Taskname</span>
+        <span className='w-1/12 text-center font-bold'>Dauer</span>
+        <span className='w-1/12 text-center font-bold'>Abhängigkeiten</span>
+      </div>
       {tasks.map((task, index) => (
         <div key={task.id} className='flex space-x-4 mb-2 items-center'>
           <span className='w-1/12 text-center font-bold'>{task.id}</span>
@@ -69,7 +75,7 @@ export default function TaskInput({ tasks, setTasks }: TaskInputProps) {
           />
           <input
             type='number'
-            className='border p-1 w-1/6'
+            className='border p-1 w-1/12'
             placeholder='Dauer'
             value={task.duration}
             min='1'
@@ -81,8 +87,8 @@ export default function TaskInput({ tasks, setTasks }: TaskInputProps) {
           />
           <input
             type='text'
-            className='border p-1 w-1/6'
-            placeholder='Abhängigkeiten (z.B. 0,1)'
+            className='border p-1 w-1/12'
+            placeholder='0'
             value={task.dependencies.join(',')}
             onChange={(e) => {
               if (index !== 0) {
