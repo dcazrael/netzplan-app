@@ -1,136 +1,38 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Nodes from './components/Nodes';
-import TaskInput from './components/TaskInput';
+import Nodes from "@/components/Nodes";
+import TaskInput from "@/components/TaskInput";
+import { useNetzplan } from "@/hooks/useNetzplan";
 
-// Task Interface
-type Task = {
-  id: number;
-  name: string;
-  duration: number;
-  dependencies: number[];
-  position: { row: number; col: number };
-  FAZ?: number;
-  FEZ?: number;
-  SAZ?: number;
-  SEZ?: number;
-  GP?: number;
-  FP?: number;
-  isCritical?: boolean;
-};
-
+/**
+ * Netzplan component for visualizing and managing project tasks with dependencies.
+ *
+ * Initializes a network plan with sample tasks (Task A through Task E) that have
+ * defined durations and inter-task dependencies. Uses the `useNetzplan` hook to
+ * manage task state and computed metrics.
+ *
+ * @component
+ * @returns {JSX.Element} A flex container displaying the task input form and
+ *                        visual node representation of the task network.
+ *
+ * @example
+ * return <Netzplan />
+ */
 export default function Netzplan() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: 0,
-      name: 'Task A',
-      duration: 2,
-      dependencies: [],
-      position: { row: 0, col: 0 },
-    },
-    {
-      id: 1,
-      name: 'Task B',
-      duration: 4,
-      dependencies: [0],
-      position: { row: 0, col: 2 },
-    },
-    {
-      id: 2,
-      name: 'Task C',
-      duration: 4,
-      dependencies: [1],
-      position: { row: 0, col: 4 },
-    },
-    {
-      id: 3,
-      name: 'Task D',
-      duration: 2,
-      dependencies: [1],
-      position: { row: 1, col: 4 },
-    },
-    {
-      id: 4,
-      name: 'Task E',
-      duration: 4,
-      dependencies: [2, 3],
-      position: { row: 0, col: 6 },
-    },
-  ]);
+    const initial = [
+        { id: 0, name: "Task A", duration: 2, dependencies: [], position: { row: 0, col: 0 } },
+        { id: 1, name: "Task B", duration: 4, dependencies: [0], position: { row: 0, col: 2 } },
+        { id: 2, name: "Task C", duration: 4, dependencies: [1], position: { row: 0, col: 4 } },
+        { id: 3, name: "Task D", duration: 2, dependencies: [1], position: { row: 1, col: 4 } },
+        { id: 4, name: "Task E", duration: 4, dependencies: [2, 3], position: { row: 0, col: 6 } },
+    ];
 
-  // Berechnungsfunktion für den Netzplan
-  const calculateSchedule = useCallback((taskList: Task[]) => {
-    const updatedTasks = [...taskList];
+    const { tasks, computedTasks, actions } = useNetzplan(initial);
 
-    // Vorwärtsrechnung (FAZ & FEZ)
-    updatedTasks.forEach((task) => {
-      if (task.dependencies.length === 0) {
-        task.FAZ = 0;
-      } else {
-        task.FAZ = Math.max(
-          ...task.dependencies.map(
-            (depId) => updatedTasks.find((t) => t.id === depId)?.FEZ ?? 0
-          )
-        );
-      }
-      task.FEZ = (task.FAZ ?? 0) + task.duration;
-    });
-
-    // Rückwärtsrechnung (SEZ & SAZ)
-    for (let i = updatedTasks.length - 1; i >= 0; i--) {
-      const task = updatedTasks[i];
-      if (updatedTasks.some((t) => t.dependencies.includes(task.id))) {
-        task.SEZ = Math.min(
-          ...updatedTasks
-            .filter((t) => t.dependencies.includes(task.id))
-            .map((t) => t.SAZ ?? Number.POSITIVE_INFINITY) // Falls SAZ nicht gesetzt ist
-        );
-      } else {
-        task.SEZ = task.FEZ;
-      }
-      task.SAZ = (task.SEZ ?? 0) - task.duration;
-    }
-
-    // Pufferzeiten berechnen (GP & FP)
-    updatedTasks.forEach((task) => {
-      task.GP = (task.SEZ ?? 0) - (task.FEZ ?? 0);
-      task.FP = Math.min(
-        ...updatedTasks
-          .filter((t) => t.dependencies.includes(task.id))
-          .map((t) => (t.FAZ ?? 0) - (task.FEZ ?? 0)),
-        task.GP ?? 0
-      );
-    });
-
-    // Kritischen Pfad markieren
-    updatedTasks.forEach((task) => {
-      task.isCritical = (task.GP ?? 0) === 0;
-    });
-
-    return updatedTasks;
-  }, []);
-
-  // Memoization: Tasks nur neu berechnen, wenn sich die Task-Liste ändert
-  const updatedTasks = useMemo(
-    () => calculateSchedule(tasks),
-    [tasks, calculateSchedule]
-  );
-
-  // State-Update nur, wenn sich wirklich etwas geändert hat
-  useEffect(() => {
-    setTasks((prevTasks) => {
-      if (JSON.stringify(prevTasks) !== JSON.stringify(updatedTasks)) {
-        return updatedTasks;
-      }
-      return prevTasks;
-    });
-  }, [updatedTasks]);
-
-  return (
-    <div className='p-4 flex space-x-2'>
-      <TaskInput tasks={tasks} setTasks={setTasks} />
-      <Nodes tasks={tasks} />
-    </div>
-  );
+    return (
+        <div className="p-4 flex space-y-2 flex-col h-screen w-screen">
+            <Nodes tasks={computedTasks} />
+            <TaskInput tasks={tasks} actions={actions} />
+        </div>
+    );
 }

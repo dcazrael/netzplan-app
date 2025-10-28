@@ -1,0 +1,7 @@
+module.exports = {
+  preset: 'next/jest',
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+};
+
+import '@testing-library/jest-dom';
