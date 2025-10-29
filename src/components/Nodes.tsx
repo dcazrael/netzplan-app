@@ -9,19 +9,6 @@ type NodesProps = {
     tasks: ScheduledTask[];
 };
 
-/**
- * Renders a container for critical path (Netzplan) nodes and their connecting paths.
- *
- * This component is responsible for:
- * - Measuring and tracking the positions and sizes of each task node within the container.
- * - Rendering SVG paths between nodes using the `Path` component, based on their positions.
- * - Displaying each task node using the `Task` component.
- * - Providing SVG marker definitions for arrowheads used in the paths.
- * - Updating node positions on DOM mutations and window resize events to ensure accurate path rendering.
- *
- * @param tasks - An array of task objects to be rendered as nodes in the network plan.
- * @returns A React element containing the nodes, connecting paths, and marker definitions.
- */
 export default function Nodes({ tasks }: NodesProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [nodePositions, setNodePositions] = useState<{
@@ -36,20 +23,19 @@ export default function Nodes({ tasks }: NodesProps) {
             [key: number]: { x: number; y: number; width: number; height: number };
         } = {};
 
-        // Layout-Messung in rAF, um Layout-Thrashing zu vermeiden
+        // In rAF messen, um Layout-Thrashing zu vermeiden
         requestAnimationFrame(() => {
+            const containerRect = container.getBoundingClientRect();
             tasks.forEach((task) => {
                 const element = document.getElementById(`task-${task.id}`);
-                if (element) {
-                    const containerRect = container.getBoundingClientRect();
-                    const rect = element.getBoundingClientRect();
-                    newPositions[task.id] = {
-                        x: rect.left - containerRect.left + rect.width / 2,
-                        y: rect.top - containerRect.top + rect.height / 2,
-                        width: rect.width,
-                        height: rect.height,
-                    };
-                }
+                if (!element) return;
+                const rect = element.getBoundingClientRect();
+                newPositions[task.id] = {
+                    x: rect.left - containerRect.left + rect.width / 2,
+                    y: rect.top - containerRect.top + rect.height / 2,
+                    width: rect.width,
+                    height: rect.height,
+                };
             });
             setNodePositions(newPositions);
         });
@@ -58,36 +44,63 @@ export default function Nodes({ tasks }: NodesProps) {
     useEffect(() => {
         updatePositions();
 
-        const observer = new MutationObserver(() => updatePositions());
-        if (containerRef.current) {
-            observer.observe(containerRef.current, {
-                childList: true,
-                subtree: true,
-            });
-        }
+        const container = containerRef.current;
+        if (!container) return;
 
-        const handleResize = () => updatePositions();
-        window.addEventListener("resize", handleResize);
+        // ResizeObserver: Container, Parent und Task-Knoten beobachten
+        const resizeObserver = new ResizeObserver(() => updatePositions());
+
+        resizeObserver.observe(container);
+        if (container.parentElement) resizeObserver.observe(container.parentElement);
+        // optional breit: body beobachten, falls äußeres Layout (Sidebar) die Breite ändert
+        resizeObserver.observe(document.body);
+
+        // Alle Task-Elemente beobachten (Breiten/Höhenänderungen)
+        const observeTaskElements = () => {
+            const nodes = container.querySelectorAll<HTMLElement>('[id^="task-"]');
+            nodes.forEach((n) => resizeObserver.observe(n));
+        };
+        observeTaskElements();
+
+        // MutationObserver: neue/entfernte Knoten erkennen und Positions-Update auslösen
+        const mutationObserver = new MutationObserver(() => {
+            observeTaskElements();
+            updatePositions();
+        });
+        mutationObserver.observe(container, {
+            childList: true,
+            subtree: true,
+        });
+
+        // Bei Fenster-Resize und CSS-Transition-Ende neu messen
+        const onResize = () => updatePositions();
+        const onTransitionEnd = () => updatePositions();
+        window.addEventListener("resize", onResize);
+        container.addEventListener("transitionend", onTransitionEnd);
 
         return () => {
-            observer.disconnect();
-            window.removeEventListener("resize", handleResize);
+            window.removeEventListener("resize", onResize);
+            container.removeEventListener("transitionend", onTransitionEnd);
+            mutationObserver.disconnect();
+            resizeObserver.disconnect();
         };
     }, [updatePositions]);
 
     return (
-        <div ref={containerRef} className="relative w-full h-full">
+        <div ref={containerRef} className="relative min-w-fit">
             <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-20">
                 {tasks.map((task) => (
-                    <Path key={`path-${task.id}`} task={task} nodePositions={nodePositions} tasks={tasks} />
+                    <Path key={`paths-${task.id}`} task={task} nodePositions={nodePositions} tasks={tasks} />
                 ))}
             </svg>
-            <div className="netzplan-container w-full z-10 p-4 border rounded bg-gray-800 relative grid gap-x-8 gap-y-2">
+
+            <div className="netzplan-container z-10 p-4 border rounded bg-gray-800 relative grid gap-x-4 gap-y-2">
                 {tasks.map((task) => (
                     <Task key={task.id} task={task} />
                 ))}
             </div>
-            <svg>
+
+            <svg aria-hidden>
                 <defs>
                     <marker
                         id="arrow-b"

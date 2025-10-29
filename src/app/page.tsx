@@ -1,5 +1,6 @@
 "use client";
 
+import GanttChart from "@/components/GanttChart";
 import Nodes from "@/components/Nodes";
 import TaskInput from "@/components/TaskInput";
 import { useNetzplan } from "@/hooks/useNetzplan";
@@ -20,19 +21,25 @@ import { useNetzplan } from "@/hooks/useNetzplan";
  */
 export default function Netzplan() {
     const initial = [
-        { id: 0, name: "Task A", duration: 2, dependencies: [], position: { row: 0, col: 0 } },
-        { id: 1, name: "Task B", duration: 4, dependencies: [0], position: { row: 0, col: 2 } },
-        { id: 2, name: "Task C", duration: 4, dependencies: [1], position: { row: 0, col: 4 } },
-        { id: 3, name: "Task D", duration: 2, dependencies: [1], position: { row: 1, col: 4 } },
-        { id: 4, name: "Task E", duration: 4, dependencies: [2, 3], position: { row: 0, col: 6 } },
+        { id: 0, name: "Kickoff", duration: 1, dependencies: [], position: { row: 0, col: 0 } },
+        { id: 1, name: "Anforderungsanalyse", duration: 3, dependencies: [0], position: { row: 0, col: 2 } },
+        { id: 2, name: "Systementwurf", duration: 2, dependencies: [1], position: { row: 0, col: 4 } },
+        { id: 3, name: "Implementierung", duration: 5, dependencies: [2], position: { row: 0, col: 6 } },
+        { id: 4, name: "Code Review", duration: 3, dependencies: [3], position: { row: 0, col: 8 } },
+        { id: 5, name: "Test", duration: 4, dependencies: [3], position: { row: 2, col: 8 } },
+        { id: 6, name: "Deployment", duration: 1, dependencies: [4], position: { row: 1, col: 8 } },
+        { id: 7, name: "Abnahme", duration: 1, dependencies: [6], position: { row: 0, col: 10 } },
     ];
 
     const { tasks, computedTasks, actions } = useNetzplan(initial);
 
     return (
-        <div className="p-4 flex space-y-2 flex-col h-screen w-screen">
-            <Nodes tasks={computedTasks} />
+        <div className="p-4 flex space-x-2">
             <TaskInput tasks={tasks} actions={actions} />
+            <div className="flex flex-col space-y-4 w-full">
+                <Nodes tasks={computedTasks} />
+                <GanttChart tasks={computedTasks} />
+            </div>
         </div>
     );
 }
