@@ -59,7 +59,7 @@ function buildNeighbors(tasks: RawTask[]): Map<number, Set<number>> {
 function indegreeMap(tasks: RawTask[]): Record<number, number> {
     const indeg: Record<number, number> = {};
     tasks.forEach((t) => (indeg[t.id] = 0));
-    tasks.forEach((t) => t.dependencies.forEach((d) => (indeg[t.id] = (indeg[t.id] ?? 0) + 1)));
+    tasks.forEach((t) => t.dependencies.forEach(() => (indeg[t.id] = (indeg[t.id] ?? 0) + 1)));
     return indeg;
 }
 
