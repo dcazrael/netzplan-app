@@ -2,7 +2,7 @@ import type { TaskTemplate } from "@/constants/taskTemplates";
 import { updateTaskPositions } from "@/lib/autoLayout";
 import { calculateSchedule } from "@/lib/schedule";
 import type { Task as RawTask, ScheduledTask } from "@/types/task";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 /**
  * Represents the set of actions available for managing a Netzplan (network plan/PERT chart).
@@ -50,6 +50,26 @@ function hasPath(tasks: RawTask[], fromId: number, toId: number): boolean {
     return false;
 }
 
+const STORAGE_KEY = "netzplan.tasks";
+
+/**
+ * Represents the initial set of raw tasks for the Netzplan, including their IDs,
+ * German-language labels, durations, dependency relationships, and grid positions
+ * (row/column) to support the default project workflow configuration.
+ */
+const DEFAULT_TASKS: RawTask[] = [
+    { id: 1, name: "Anforderungsanalyse", duration: 3, dependencies: [0], position: { row: 0, col: 2 } },
+    { id: 2, name: "Systementwurf", duration: 2, dependencies: [1], position: { row: 0, col: 4 } },
+    { id: 3, name: "Implementierung", duration: 5, dependencies: [2], position: { row: 0, col: 6 } },
+    { id: 4, name: "Code Review", duration: 3, dependencies: [3], position: { row: 0, col: 8 } },
+    { id: 5, name: "Test", duration: 4, dependencies: [3], position: { row: 1, col: 8 } },
+    { id: 6, name: "Deployment", duration: 1, dependencies: [4], position: { row: 0, col: 10 } },
+    { id: 7, name: "Abnahme", duration: 1, dependencies: [6], position: { row: 0, col: 12 } },
+];
+
+const hydrateTasks = (list: RawTask[]): RawTask[] =>
+    updateTaskPositions(list.map((t) => ({ ...t, position: { ...t.position } })));
+
 /**
  * Custom hook for managing a Netzplan (network diagram) with tasks and their dependencies.
  *
@@ -72,15 +92,21 @@ function hasPath(tasks: RawTask[], fromId: number, toId: number): boolean {
  * - Positions are auto-layout after any modification
  */
 export function useNetzplan(initial?: RawTask[]) {
-    const [tasks, setTasks] = useState<RawTask[]>(
-        initial ?? [
-            { id: 0, name: "Task A", duration: 2, dependencies: [], position: { row: 0, col: 0 } },
-            { id: 1, name: "Task B", duration: 4, dependencies: [0], position: { row: 0, col: 2 } },
-            { id: 2, name: "Task C", duration: 4, dependencies: [1], position: { row: 0, col: 4 } },
-            { id: 3, name: "Task D", duration: 2, dependencies: [1], position: { row: 1, col: 4 } },
-            { id: 4, name: "Task E", duration: 4, dependencies: [2, 3], position: { row: 0, col: 6 } },
-        ]
-    );
+    const [tasks, setTasks] = useState<RawTask[]>(() => {
+        if (initial?.length) return hydrateTasks(initial);
+        if (typeof window !== "undefined") {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored) as RawTask[];
+                    if (Array.isArray(parsed) && parsed.length) return hydrateTasks(parsed);
+                }
+            } catch {
+                /* ignore */
+            }
+        }
+        return hydrateTasks(DEFAULT_TASKS);
+    });
 
     const setWithLayout = useCallback((updater: (prev: RawTask[]) => RawTask[]) => {
         setTasks((prev) => updateTaskPositions(updater(prev)));
@@ -176,6 +202,15 @@ export function useNetzplan(initial?: RawTask[]) {
     );
 
     const computedTasks: ScheduledTask[] = useMemo(() => calculateSchedule(tasks), [tasks]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch {
+            /* ignore */
+        }
+    }, [tasks]);
 
     return {
         tasks,
